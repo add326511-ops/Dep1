@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.json.JSONArray
+import org.json.JSONObject
 
 data class Champion(
     val name: String,
@@ -24,16 +26,50 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
+                val prefs = remember {
+                    getSharedPreferences("raid_data", MODE_PRIVATE)
+                }
+
+                val champions = remember {
+                    mutableStateListOf<Champion>().apply {
+                        val saved = prefs.getString("champions", "[]")
+                        val array = JSONArray(saved)
+
+                        for (i in 0 until array.length()) {
+                            val item = array.getJSONObject(i)
+                            add(
+                                Champion(
+                                    item.getString("name"),
+                                    item.getInt("level"),
+                                    item.getInt("stars")
+                                )
+                            )
+                        }
+                    }
+                }
+
+                fun saveChampions() {
+                    val array = JSONArray()
+
+                    champions.forEach { champion ->
+                        val item = JSONObject()
+                        item.put("name", champion.name)
+                        item.put("level", champion.level)
+                        item.put("stars", champion.stars)
+                        array.put(item)
+                    }
+
+                    prefs.edit()
+                        .putString("champions", array.toString())
+                        .apply()
+                }
+
                 var showDialog by remember { mutableStateOf(false) }
                 var editingIndex by remember { mutableStateOf<Int?>(null) }
                 var name by remember { mutableStateOf("") }
                 var level by remember { mutableStateOf("60") }
                 var stars by remember { mutableStateOf("6") }
                 var deleteIndex by remember { mutableStateOf<Int?>(null) }
-
-                val champions = remember {
-                    mutableStateListOf<Champion>()
-                }
 
                 Column(
                     modifier = Modifier
@@ -170,6 +206,7 @@ class MainActivity : ComponentActivity() {
                                             champions[index] = champion
                                         }
 
+                                        saveChampions()
                                         showDialog = false
                                     }
                                 }
@@ -206,6 +243,7 @@ class MainActivity : ComponentActivity() {
                                     deleteIndex?.let {
                                         champions.removeAt(it)
                                     }
+                                    saveChampions()
                                     deleteIndex = null
                                 }
                             ) {
