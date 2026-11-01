@@ -11,11 +11,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.json.JSONArray
+import org.json.JSONObject
 
 data class Champion(
     val name: String,
     val level: Int,
-    val stars: Int
+    val stars: Int,
+    val element: String,
+    val faction: String,
+    val rarity: String
 )
 
 class MainActivity : ComponentActivity() {
@@ -24,17 +29,61 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
+                val prefs = remember {
+                    getSharedPreferences("raid_data", MODE_PRIVATE)
+                }
+
+                val champions = remember {
+                    mutableStateListOf<Champion>().apply {
+                        val array = JSONArray(
+                            prefs.getString("champions", "[]")
+                        )
+
+                        for (i in 0 until array.length()) {
+                            val item = array.getJSONObject(i)
+
+                            add(
+                                Champion(
+                                    item.getString("name"),
+                                    item.getInt("level"),
+                                    item.getInt("stars"),
+                                    item.optString("element", "Büyü"),
+                                    item.optString("faction", "Bilinmiyor"),
+                                    item.optString("rarity", "Efsanevi")
+                                )
+                            )
+                        }
+                    }
+                }
+
+                fun saveChampions() {
+                    val array = JSONArray()
+
+                    champions.forEach { champion ->
+                        val item = JSONObject()
+                        item.put("name", champion.name)
+                        item.put("level", champion.level)
+                        item.put("stars", champion.stars)
+                        item.put("element", champion.element)
+                        item.put("faction", champion.faction)
+                        item.put("rarity", champion.rarity)
+                        array.put(item)
+                    }
+
+                    prefs.edit()
+                        .putString("champions", array.toString())
+                        .apply()
+                }
+
                 var showDialog by remember { mutableStateOf(false) }
                 var editingIndex by remember { mutableStateOf<Int?>(null) }
                 var name by remember { mutableStateOf("") }
                 var level by remember { mutableStateOf("60") }
                 var stars by remember { mutableStateOf("6") }
-
+                var element by remember { mutableStateOf("Büyü") }
+                var faction by remember { mutableStateOf("") }
+                var rarity by remember { mutableStateOf("Efsanevi") }
                 var deleteIndex by remember { mutableStateOf<Int?>(null) }
-
-                val champions = remember {
-                    mutableStateListOf<Champion>()
-                }
 
                 Column(
                     modifier = Modifier
@@ -59,6 +108,9 @@ class MainActivity : ComponentActivity() {
                             name = ""
                             level = "60"
                             stars = "6"
+                            element = "Büyü"
+                            faction = ""
+                            rarity = "Efsanevi"
                             showDialog = true
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -84,6 +136,9 @@ class MainActivity : ComponentActivity() {
                                     )
                                     Text("Seviye: ${champion.level}")
                                     Text("Yıldız: ${champion.stars}")
+                                    Text("Element: ${champion.element}")
+                                    Text("Hizip: ${champion.faction}")
+                                    Text("Nadirlik: ${champion.rarity}")
 
                                     Row {
                                         TextButton(
@@ -92,6 +147,9 @@ class MainActivity : ComponentActivity() {
                                                 name = champion.name
                                                 level = champion.level.toString()
                                                 stars = champion.stars.toString()
+                                                element = champion.element
+                                                faction = champion.faction
+                                                rarity = champion.rarity
                                                 showDialog = true
                                             }
                                         ) {
@@ -126,7 +184,9 @@ class MainActivity : ComponentActivity() {
                             )
                         },
                         text = {
-                            Column {
+                            Column(
+                                modifier = Modifier.heightIn(max = 420.dp)
+                            ) {
                                 OutlinedTextField(
                                     value = name,
                                     onValueChange = { name = it },
@@ -144,6 +204,28 @@ class MainActivity : ComponentActivity() {
                                     onValueChange = { stars = it },
                                     label = { Text("Yıldız (1-6)") }
                                 )
+
+                                OutlinedTextField(
+                                    value = element,
+                                    onValueChange = { element = it },
+                                    label = {
+                                        Text("Element: Büyü, Ruh, Kuvvet, Boşluk")
+                                    }
+                                )
+
+                                OutlinedTextField(
+                                    value = faction,
+                                    onValueChange = { faction = it },
+                                    label = { Text("Hizip") }
+                                )
+
+                                OutlinedTextField(
+                                    value = rarity,
+                                    onValueChange = { rarity = it },
+                                    label = {
+                                        Text("Nadirlik: Efsanevi, Epik, Nadir...")
+                                    }
+                                )
                             }
                         },
                         confirmButton = {
@@ -155,12 +237,18 @@ class MainActivity : ComponentActivity() {
                                     if (
                                         name.isNotBlank() &&
                                         l != null && l in 1..60 &&
-                                        s != null && s in 1..6
+                                        s != null && s in 1..6 &&
+                                        element.isNotBlank() &&
+                                        faction.isNotBlank() &&
+                                        rarity.isNotBlank()
                                     ) {
                                         val champion = Champion(
                                             name.trim(),
                                             l,
-                                            s
+                                            s,
+                                            element.trim(),
+                                            faction.trim(),
+                                            rarity.trim()
                                         )
 
                                         val index = editingIndex
@@ -171,6 +259,7 @@ class MainActivity : ComponentActivity() {
                                             champions[index] = champion
                                         }
 
+                                        saveChampions()
                                         showDialog = false
                                     }
                                 }
@@ -207,6 +296,7 @@ class MainActivity : ComponentActivity() {
                                     deleteIndex?.let {
                                         champions.removeAt(it)
                                     }
+                                    saveChampions()
                                     deleteIndex = null
                                 }
                             ) {
