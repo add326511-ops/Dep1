@@ -1,3 +1,4 @@
+
 package com.raidultimateassistant
 
 import android.os.Bundle
@@ -5,7 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -24,9 +25,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 var showDialog by remember { mutableStateOf(false) }
+                var editingIndex by remember { mutableStateOf<Int?>(null) }
                 var name by remember { mutableStateOf("") }
                 var level by remember { mutableStateOf("60") }
                 var stars by remember { mutableStateOf("6") }
+                var deleteIndex by remember { mutableStateOf<Int?>(null) }
 
                 val champions = remember {
                     mutableStateListOf<Champion>()
@@ -50,7 +53,13 @@ class MainActivity : ComponentActivity() {
                     )
 
                     Button(
-                        onClick = { showDialog = true },
+                        onClick = {
+                            editingIndex = null
+                            name = ""
+                            level = "60"
+                            stars = "6"
+                            showDialog = true
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("+ Şampiyon Ekle")
@@ -59,18 +68,43 @@ class MainActivity : ComponentActivity() {
                     Spacer(Modifier.height(12.dp))
 
                     LazyColumn {
-                        items(champions) { champion ->
+                        itemsIndexed(champions) { index, champion ->
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 5.dp)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(16.dp)
+                                    modifier = Modifier.padding(12.dp)
                                 ) {
-                                    Text(champion.name)
+                                    Text(
+                                        champion.name,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
                                     Text("Seviye: ${champion.level}")
                                     Text("Yıldız: ${champion.stars}")
+
+                                    Row {
+                                        TextButton(
+                                            onClick = {
+                                                editingIndex = index
+                                                name = champion.name
+                                                level = champion.level.toString()
+                                                stars = champion.stars.toString()
+                                                showDialog = true
+                                            }
+                                        ) {
+                                            Text("Düzenle")
+                                        }
+
+                                        TextButton(
+                                            onClick = {
+                                                deleteIndex = index
+                                            }
+                                        ) {
+                                            Text("Sil")
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -83,32 +117,31 @@ class MainActivity : ComponentActivity() {
                             showDialog = false
                         },
                         title = {
-                            Text("Yeni Şampiyon")
+                            Text(
+                                if (editingIndex == null)
+                                    "Yeni Şampiyon"
+                                else
+                                    "Şampiyonu Düzenle"
+                            )
                         },
                         text = {
                             Column {
                                 OutlinedTextField(
                                     value = name,
                                     onValueChange = { name = it },
-                                    label = {
-                                        Text("Şampiyon adı")
-                                    }
+                                    label = { Text("Şampiyon adı") }
                                 )
 
                                 OutlinedTextField(
                                     value = level,
                                     onValueChange = { level = it },
-                                    label = {
-                                        Text("Seviye (1-60)")
-                                    }
+                                    label = { Text("Seviye (1-60)") }
                                 )
 
                                 OutlinedTextField(
                                     value = stars,
                                     onValueChange = { stars = it },
-                                    label = {
-                                        Text("Yıldız (1-6)")
-                                    }
+                                    label = { Text("Yıldız (1-6)") }
                                 )
                             }
                         },
@@ -123,16 +156,20 @@ class MainActivity : ComponentActivity() {
                                         l != null && l in 1..60 &&
                                         s != null && s in 1..6
                                     ) {
-                                        champions.add(
-                                            Champion(
-                                                name.trim(),
-                                                l,
-                                                s
-                                            )
+                                        val champion = Champion(
+                                            name.trim(),
+                                            l,
+                                            s
                                         )
-                                        name = ""
-                                        level = "60"
-                                        stars = "6"
+
+                                        val index = editingIndex
+
+                                        if (index == null) {
+                                            champions.add(champion)
+                                        } else {
+                                            champions[index] = champion
+                                        }
+
                                         showDialog = false
                                     }
                                 }
@@ -144,6 +181,41 @@ class MainActivity : ComponentActivity() {
                             TextButton(
                                 onClick = {
                                     showDialog = false
+                                }
+                            ) {
+                                Text("İptal")
+                            }
+                        }
+                    )
+                }
+
+                if (deleteIndex != null) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            deleteIndex = null
+                        },
+                        title = {
+                            Text("Şampiyonu Sil")
+                        },
+                        text = {
+                            Text("Bu şampiyonu silmek istediğine emin misin?")
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    deleteIndex?.let {
+                                        champions.removeAt(it)
+                                    }
+                                    deleteIndex = null
+                                }
+                            ) {
+                                Text("Sil")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    deleteIndex = null
                                 }
                             ) {
                                 Text("İptal")
