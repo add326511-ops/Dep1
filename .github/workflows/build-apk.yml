@@ -1,3 +1,4 @@
+
 name: RAID Ultimate Assistant APK
 
 on:
@@ -20,10 +21,30 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Gradle ile APK oluştur
+      - name: Gradle kurulumu
         uses: gradle/actions/setup-gradle@v4
 
+      - name: İmza dosyasını oluştur ve kontrol et
+        env:
+          KEY_DATA: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -e
+          if [ -z "$KEY_DATA" ]; then
+            echo "HATA: Base64 Secret boş."
+            exit 1
+          fi
+          printf '%s' "$KEY_DATA" | base64 --decode > app/release-key.jks
+          if [ ! -s app/release-key.jks ]; then
+            echo "HATA: İmza dosyası oluşturulamadı."
+            exit 1
+          fi
+          echo "İmza dosyası başarıyla oluşturuldu."
+
       - name: Debug APK derle
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle assembleDebug
 
       - name: APK dosyasını yükle
