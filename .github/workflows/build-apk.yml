@@ -25,7 +25,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: İmza dosyasını oluştur ve kontrol et
-        env:
+        env:            ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_DATA: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           set -e
@@ -45,7 +45,16 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: gradle assembleDebug
+        run:         run: |
+          set -e
+          printf '%s' "$KEY_DATA" | base64 --decode > app/release-key.jks
+          echo "Dosya boyutu:"
+          wc -c app/release-key.jks
+          echo "Keystore doğrulaması:"
+          keytool -list \
+            -keystore app/release-key.jks \
+            -storetype JKS \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD"
 
       - name: APK dosyasını yükle
         uses: actions/upload-artifact@v4
