@@ -1,3 +1,4 @@
+
 package com.raidultimateassistant
 
 import android.os.Bundle
@@ -5,90 +6,223 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-private data class Feature(val title: String, val description: String)
+data class Champion(
+    val name: String,
+    val level: Int,
+    val stars: Int
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { RaidAssistantApp() }
-    }
-}
 
-@Composable
-private fun RaidAssistantApp() {
-    val features = listOf(
-        Feature("Şampiyonlar", "Şampiyon kadronu ve gelişim durumunu yönet"),
-        Feature("Ekipmanlar", "Artefakt ve aksesuar envanterini düzenle"),
-        Feature("Hydra Takımı", "Hydra için takım planlama alanı"),
-        Feature("Zindan Farmı", "Dragon ve diğer zindanlar için farm planı"),
-        Feature("Arena", "Arena takım notları ve önerileri"),
-        Feature("Ekran Görüntüsü Analizi", "Oyun ekran görüntülerini içe aktarma alanı")
-    )
-    var selected by remember { mutableStateOf<String?>(null) }
+        setContent {
+            MaterialTheme {
+                var showDialog by remember { mutableStateOf(false) }
+                var editingIndex by remember { mutableStateOf<Int?>(null) }
+                var name by remember { mutableStateOf("") }
+                var level by remember { mutableStateOf("60") }
+                var stars by remember { mutableStateOf("6") }
 
-    MaterialTheme(colorScheme = darkColorScheme()) {
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("RAID Ultimate Assistant", fontWeight = FontWeight.Bold) }
-                )
-            }
-        ) { padding ->
-            if (selected == null) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                var deleteIndex by remember { mutableStateOf<Int?>(null) }
+
+                val champions = remember {
+                    mutableStateListOf<Champion>()
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
                 ) {
-                    item {
-                        Text("Hoş geldin!", style = MaterialTheme.typography.headlineMedium)
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "RAID: Shadow Legends için Türkçe kadro ve strateji yardımcın.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Text(
+                        "RAID Ultimate Assistant",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+
+                    Text(
+                        "Şampiyonlarım",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Button(
+                        onClick = {
+                            editingIndex = null
+                            name = ""
+                            level = "60"
+                            stars = "6"
+                            showDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("+ Şampiyon Ekle")
                     }
-                    items(features) { feature ->
-                        Card(
-                            onClick = { selected = feature.title },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(Modifier.padding(18.dp)) {
-                                Text(feature.title, style = MaterialTheme.typography.titleLarge)
-                                Spacer(Modifier.height(4.dp))
-                                Text(feature.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    Spacer(Modifier.height(12.dp))
+
+                    LazyColumn {
+                        itemsIndexed(champions) { index, champion ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 5.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
+                                    Text(
+                                        champion.name,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Text("Seviye: ${champion.level}")
+                                    Text("Yıldız: ${champion.stars}")
+
+                                    Row {
+                                        TextButton(
+                                            onClick = {
+                                                editingIndex = index
+                                                name = champion.name
+                                                level = champion.level.toString()
+                                                stars = champion.stars.toString()
+                                                showDialog = true
+                                            }
+                                        ) {
+                                            Text("Düzenle")
+                                        }
+
+                                        TextButton(
+                                            onClick = {
+                                                deleteIndex = index
+                                            }
+                                        ) {
+                                            Text("Sil")
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                    item {
-                        Text(
-                            "Not: Bu uygulama yardımcı analiz içindir; oyun hesabına veya oyun dosyalarına müdahale etmez.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
-            } else {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    Text(selected!!, style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        "Bu bölüm başlangıç sürümünde hazırlanıyor. Sonraki adımda bu ekrana gerçek kayıt ve analiz özellikleri eklenecek.",
-                        style = MaterialTheme.typography.bodyLarge
+
+                if (showDialog) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showDialog = false
+                        },
+                        title = {
+                            Text(
+                                if (editingIndex == null)
+                                    "Yeni Şampiyon"
+                                else
+                                    "Şampiyonu Düzenle"
+                            )
+                        },
+                        text = {
+                            Column {
+                                OutlinedTextField(
+                                    value = name,
+                                    onValueChange = { name = it },
+                                    label = { Text("Şampiyon adı") }
+                                )
+
+                                OutlinedTextField(
+                                    value = level,
+                                    onValueChange = { level = it },
+                                    label = { Text("Seviye (1-60)") }
+                                )
+
+                                OutlinedTextField(
+                                    value = stars,
+                                    onValueChange = { stars = it },
+                                    label = { Text("Yıldız (1-6)") }
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    val l = level.toIntOrNull()
+                                    val s = stars.toIntOrNull()
+
+                                    if (
+                                        name.isNotBlank() &&
+                                        l != null && l in 1..60 &&
+                                        s != null && s in 1..6
+                                    ) {
+                                        val champion = Champion(
+                                            name.trim(),
+                                            l,
+                                            s
+                                        )
+
+                                        val index = editingIndex
+
+                                        if (index == null) {
+                                            champions.add(champion)
+                                        } else {
+                                            champions[index] = champion
+                                        }
+
+                                        showDialog = false
+                                    }
+                                }
+                            ) {
+                                Text("Kaydet")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    showDialog = false
+                                }
+                            ) {
+                                Text("İptal")
+                            }
+                        }
                     )
-                    Button(onClick = { selected = null }) { Text("Ana menüye dön") }
+                }
+
+                if (deleteIndex != null) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            deleteIndex = null
+                        },
+                        title = {
+                            Text("Şampiyonu Sil")
+                        },
+                        text = {
+                            Text("Bu şampiyonu silmek istediğine emin misin?")
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    deleteIndex?.let {
+                                        champions.removeAt(it)
+                                    }
+                                    deleteIndex = null
+                                }
+                            ) {
+                                Text("Sil")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    deleteIndex = null
+                                }
+                            ) {
+                                Text("İptal")
+                            }
+                        }
+                    )
                 }
             }
         }
